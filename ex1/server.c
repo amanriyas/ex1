@@ -28,7 +28,7 @@ void list_requests(){
 
 void list_rules(){
     //to list all the rules
-    for (int i = 0; i < firewall.list_of_rules; i++)
+    for (int i = 0; i < firewall.count_of_rules; i++)
     {
         printf("%s\n",firewall.list_of_rules[i]);
     }
@@ -156,6 +156,25 @@ void check_rule(char rule[]){
 void delete_rule(char rule[]){
     // command is D <rule>
     // deletes a valid rule from the Server   
+    int found =-1; // -1 means not found
+    for (int i = 0; i < firewall.count_of_rules; i++)
+    {
+       if(strcmp(firewall.list_of_rules[i],rule)==0){
+         found = i;
+         break;
+       }
+    }
+
+    if(found!=-1){
+         for (int i = found; i < firewall.count_of_rules-1; i++){
+            strcpy(firewall.list_of_rules[i],firewall.list_of_rules[i+1]);
+         }
+         firewall.count_of_rules--;
+         printf("Rule Deleted\n");
+    }
+    else{
+        printf("Rule not found\n");
+    }
     
 
 }
@@ -167,11 +186,11 @@ void runserver(){
  switch (line[0])
         {
         case 'A':
-            add_rule(line);
+            add_rule(line + 2);
             break;
         
         case 'D':
-            delete_rule(line);
+            delete_rule(line + 2);
             break;
         
         case 'L':
