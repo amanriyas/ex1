@@ -43,79 +43,109 @@ void add_rule(const char* rule){
 }
 
 void parseIPAddress(const char *IP){
-     char* copy = strdup(IP);
-     char * token = strtok(copy,".");
-     while(token !=NULL){
-        if(strchr(token,'-')!=NULL){
-            char * new_copy  = strdup(token);
-            char* new_token= strtok(new_copy,"-");
-            int first_num,second_num;
-            int count =1;
-            while(new_token !=NULL){
-                int num = atoi(new_token);
-                if(!(num>=0 && num<=255)){
-                  printf("Illegal IP address or port specified");
-                  break;
-                }
-                else if(count!=2){
-                    first_num=num;
-                    count++;
-                    new_token = strtok(NULL,"-");
-                }
-                else if(count ==2){
-                    second_num = num;
-                }
-                
-            }
-            if (first_num<second_num){
-                  printf("Illegal IP address or port specified");
-                  break;
-                }
+     char* token ; 
+     char* temp = strdup(IP);
 
-        }
-        else{
+     token = strtok(temp,".");
+     while (token != NULL)
+     {
+        if(strchr(token,'-')==NULL){
             int num = atoi(token);
-            if(!(num >=0 && num<=255)){
-                printf("Illegal IP address or port specified");
+            if(num<0||num>255){
+                printf("Invalid Rule\n");
                 break;
             }
         }
-        token = strtok(NULL,".");
-        
+        else{
+           
+           char* range_temp = strdup(token);
+           char* first_part = strtok(range_temp,"-");
+           char* second_part = strtok(NULL,"-");
+
+           int first_num = atoi(first_part);
+           int second_num = atoi(second_part);
+           
+           if( first_num<second_num){
+               if(first_num>=0 && first_num <= 255 && second_num<=255){
+                printf("Rule Valid\n");
+               }
+               else{
+                printf("Invalid Rule\n");
+               }
+           }
+           else{
+            printf("Invalid Rule\n");
+           }
+           
+           free(range_temp);
+        }
+        token = strtok(NULL, ".");
      }
-     free(copy);
+     free(temp);    
 }
 
+void parsePort(char* port){
+   
+   if(strchr(port,'-')!=NULL){
+      
+      char* range_temp = strdup(port);
+      char* first_part = strtok(range_temp,"-");
+      char* second_part = strtok(NULL,"-");
 
+      int first_num = atoi(first_part);
+      int second_num = atoi(second_part);
 
-void check_rule(const char rule[]){
+      if(first_num<second_num){
+        if(first_num>=0 && first_num<= 65535 && second_num <=65535){
+            printf("Rule Valid\n");
+        }
+        else{
+            printf("Invalid Rule\n");
+        }
+      }
+      else{
+        printf("Invalid Rule");
+      }
+
+     free(range_temp);
+   }
+   else{
+    int num = atoi(port);
+    if(num>=0 && num<=65535){
+        printf("Rule Valid\n");
+    }
+    else{
+        printf("Invalid Rule\n");
+     }
+   }
+
+}
+
+void check_rule(char rule[]){
     // command is C <IPAddress> <Ports>
     // validate whether the rule is valid or not and add it if needed
-    char* copy = strdup(rule);
-    char* token = strtok(copy," ");
-    int loop_count =1;
-    while(token!=NULL){
-       if(strcmp(token,'A')==0){
+    // call the parseIp address and the parse port methods to verify the rules 
+     char* token ;
+     int loop_count = 1;
+
+     token = strtok(rule," ");
+     while(token!=NULL){
+        if(strcmp(token,"C")==0){
+            loop_count++;
+        }
+        else if (loop_count==2)
+        {
+            parseIPAddress(token);
+            loop_count++;
+        }
+        else if (loop_count == 3)
+        {
+            parsePort(token);
+            loop_count++;
+        }
+        
         token = strtok(NULL," ");
-        loop_count++;
-        continue;
-       }
-       else if (loop_count == 2)
-       {
-        parseIPAddress(token);
-        token = strtok(NULL," ");
-        loop_count++;
-       }
-       else if(loop_count ==3){
-        parsePortNumber(token);
-        token = strtok(NULL," ");
-        break;
-       }
-       
-       
-    }
-    
-    free(copy);
+     }
 
 }
 
