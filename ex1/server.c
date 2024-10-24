@@ -8,37 +8,41 @@
 typedef struct{
         char list_of_rules[100][100];  // stores all the Rules
         char list_requests[100][100];
-        int count;             //Stores all the requests sent to it
+        int count_of_rules;
+        int count_of_requests;             //Stores all the requests sent to it
     } Firewall;
+
+
+Firewall firewall = {.count_of_rules=0, .count_of_requests=0};
+
     
 void list_requests(){
     // command is R
     // write the code to list all the requests
-    Firewall* request;
-    for(int i = 0; i<request->count;i++){
-        printf("%s\n",request->list_requests[i]);
-    }      
-
+    for (int i = 0; i < firewall.count_of_requests; i++)
+    {
+        printf("%s\n",firewall.list_requests[i]);
+    }
+    
 }
 
 void list_rules(){
     //to list all the rules
-    Firewall* request;
-    for(int i = 0; i<request->count;i++){
-        printf("Rule: %s\n",request->list_of_rules[i]);
-    }      
+    for (int i = 0; i < firewall.list_of_rules; i++)
+    {
+        printf("%s\n",firewall.list_of_rules[i]);
+    }
+
 }
 
 void add_rule(const char* rule){
     // command is A <rule>
     // write code to add the rule 
-    Firewall* request;
-   // int count = request->count;
-    if(request->count < 100){
-        strcpy(request->list_of_rules[request->count],rule);
-        request->count++;
-        printf("Rule Added\n");
-    }
+  if(firewall.count_of_rules<100){
+    strcpy(firewall.list_of_rules[firewall.count_of_rules],rule);
+    firewall.count_of_rules++;
+    printf("Rule Added\n");
+  }
     
 }
 
@@ -152,28 +156,7 @@ void check_rule(char rule[]){
 void delete_rule(char rule[]){
     // command is D <rule>
     // deletes a valid rule from the Server   
-    Firewall* request;
-    int is_found = -1;
-
-    //find the index of the string to be deleted
-    for (int i = 0; i<request->count;i++){
-        if(strcmp(request->list_of_rules,rule)==0){
-            is_found=i;
-            break;
-        }
-    }
-
-    if (is_found != -1){
-        for( int i =0; i< request->count -1;i++){
-            strcpy(request->list_of_rules[i],request->list_of_rules[i+1]);
-        }
-        request->count--;
-        printf("Rule deleted");
-    }
-    else{
-        printf("Rule not found");
-    }
-
+    
 
 }
 
