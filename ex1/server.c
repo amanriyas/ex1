@@ -15,10 +15,11 @@ typedef struct{
 
 Firewall firewall = {.count_of_rules=0, .count_of_requests=0};
 
-    
+
 void list_requests(){
     // command is R
     // write the code to list all the requests
+    bool status = false;
     for (int i = 0; i < firewall.count_of_requests; i++)
     {
         printf("%s\n",firewall.list_requests[i]);
@@ -30,7 +31,7 @@ void list_rules(){
     //to list all the rules
     for (int i = 0; i < firewall.count_of_rules; i++)
     {
-        printf("%s\n",firewall.list_of_rules[i]);
+        printf("Rule : %s\n",firewall.list_of_rules[i]);
     }
 
 }
@@ -43,10 +44,15 @@ void add_rule(const char* rule){
     firewall.count_of_rules++;
     printf("Rule Added\n");
   }
+  // to add the valid request
+  if(firewall.count_of_requests<100){
+    strcpy(firewall.list_requests[firewall.count_of_requests],rule);
+    firewall.count_of_requests++;
+  }
     
 }
 
-void parseIPAddress(const char *IP){
+bool parseIPAddress(const char *IP){
      char* token ; 
      char* temp = strdup(IP);
 
@@ -88,7 +94,7 @@ void parseIPAddress(const char *IP){
      free(temp);    
 }
 
-void parsePort(char* port){
+bool parsePort(char* port){
    
    if(strchr(port,'-')!=NULL){
       
@@ -131,6 +137,8 @@ void check_rule(char rule[]){
     // call the parseIp address and the parse port methods to verify the rules 
      char* token ;
      int loop_count = 1;
+     bool valid_ip = false;
+     bool valid_port = false;
 
      token = strtok(rule," ");
      while(token!=NULL){
@@ -139,16 +147,24 @@ void check_rule(char rule[]){
         }
         else if (loop_count==2)
         {
-            parseIPAddress(token);
+            valid_ip= parseIPAddress(token);
             loop_count++;
         }
         else if (loop_count == 3)
         {
-            parsePort(token);
+            valid_port= parsePort(token);
             loop_count++;
         }
         
         token = strtok(NULL," ");
+     }
+     // add rule if both IP and port are valid
+     if (valid_ip && valid_port){
+        add_rule(rule);
+        printf("Connection accepted\n");
+     }
+     else{
+        printf("Connection rejected\n");
      }
 
 }
@@ -186,11 +202,11 @@ void runserver(){
  switch (line[0])
         {
         case 'A':
-            add_rule(line + 2);
+            add_rule(line);
             break;
         
         case 'D':
-            delete_rule(line + 2);
+            delete_rule(line);
             break;
         
         case 'L':
