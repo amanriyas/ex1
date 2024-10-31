@@ -40,7 +40,7 @@ void add_rule(const char* rule){
     // command is A <rule>
     // write code to add the rule 
   if(firewall.count_of_rules<100){
-    strcpy(firewall.list_of_rules[firewall.count_of_rules],rule);
+    strcpy(firewall.list_of_rules[firewall.count_of_rules],rule+2);
     firewall.count_of_rules++;
     printf("Rule Added\n");
   }
@@ -197,12 +197,13 @@ void delete_rule(char rule[]){
 
 void runserver(){
  printf("Server has started\n");   
- char line[256];
- fgets(line,256,stdin);
- switch (line[0])
-        {
+ while(true){
+   char line[256];
+   fgets(line,256,stdin);
+   switch (line[0])
+    {
         case 'A':
-            add_rule(line);
+            add_rule(line);// adds the request in the same function itself
             break;
         
         case 'D':
@@ -225,16 +226,15 @@ void runserver(){
             printf("Illegal request");
             break;
         }
-
-
+  }
+ 
 }
 // additional logic need to be implemented
 
 int main (int argc, char ** argv) {
     /* to be written */
     runserver();
-    printf ("Server to be written\n");
+    //printf ("Server to be written\n");
     return 0;
     
 }
- 
