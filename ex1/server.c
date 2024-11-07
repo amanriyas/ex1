@@ -1,240 +1,221 @@
 #include <stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
 #include <pthread.h>
 
+typedef struct RuleNode {
+    char rule[100];            // Stores a rule
+    struct RuleNode *next;     // Pointer to the next rule in the list
+} RuleNode;
 
-typedef struct{
-        char list_of_rules[100][100];  // stores all the Rules
-        char list_requests[100][100];
-        int count_of_rules;
-        int count_of_requests;             //Stores all the requests sent to it
-    } Firewall;
+typedef struct RequestNode {
+    char request[100];         // Stores a request
+    struct RequestNode *next;  // Pointer to the next request in the list
+} RequestNode;
 
+typedef struct {
+    RuleNode *rules_head;       // Head of the linked list for rules
+    RequestNode *requests_head; // Head of the linked list for requests
+} Firewall;
 
-Firewall firewall = {.count_of_rules=0, .count_of_requests=0};
+Firewall firewall = {.rules_head = NULL, .requests_head = NULL};
 
-
-void list_requests(){
-    // command is R
-    // write the code to list all the requests
-    bool status = false;
-    for (int i = 0; i < firewall.count_of_requests; i++)
-    {
-        printf("%s\n",firewall.list_requests[i]);
+// Function to add a rule to the linked list
+void add_rule(const char *rule) {
+    RuleNode *new_node = (RuleNode *)malloc(sizeof(RuleNode));
+    if (!new_node) {
+        printf("Memory allocation failed for rule.\n");
+        return;
     }
-    
-}
-
-void list_rules(){
-    //to list all the rules
-    for (int i = 0; i < firewall.count_of_rules; i++)
-    {
-        printf("Rule : %s\n",firewall.list_of_rules[i]);
-    }
-
-}
-
-void add_rule(const char* rule){
-    // command is A <rule>
-    // write code to add the rule 
-  if(firewall.count_of_rules<100){
-    strcpy(firewall.list_of_rules[firewall.count_of_rules],rule+2);
-    firewall.count_of_rules++;
+    strcpy(new_node->rule, rule + 2);  // Skipping the command part
+    new_node->next = firewall.rules_head;
+    firewall.rules_head = new_node;
     printf("Rule Added\n");
-  }
-  // to add the valid request
-  if(firewall.count_of_requests<100){
-    strcpy(firewall.list_requests[firewall.count_of_requests],rule);
-    firewall.count_of_requests++;
-  }
-    
 }
 
-bool parseIPAddress(const char *IP){
-     char* token ; 
-     char* temp = strdup(IP);
+// Function to list all rules in the linked list
+void list_rules() {
+    RuleNode *current = firewall.rules_head;
+    if (current == NULL) {
+        printf("No rules available.\n");
+        return;
+    }
+    int rule_num = 1;
+    while (current) {
+        printf("Rule %d: %s\n", rule_num++, current->rule);
+        current = current->next;
+    }
+}
 
-     token = strtok(temp,".");
-     while (token != NULL)
-     {
-        if(strchr(token,'-')==NULL){
+// Function to delete a specific rule from the linked list
+void delete_rule(const char *rule) {
+    RuleNode *current = firewall.rules_head;
+    RuleNode *previous = NULL;
+    
+    while (current != NULL && strcmp(current->rule, rule + 2) != 0) {
+        previous = current;
+        current = current->next;
+    }
+    
+    if (current == NULL) {
+        printf("Rule not found.\n");
+        return;
+    }
+    
+    if (previous == NULL) { 
+        firewall.rules_head = current->next;
+    } else {
+        previous->next = current->next;
+    }
+    free(current);
+    printf("Rule Deleted\n");
+}
+
+// Function to add a request to the linked list
+void add_request(const char *request) {
+    RequestNode *new_node = (RequestNode *)malloc(sizeof(RequestNode));
+    if (!new_node) {
+        printf("Memory allocation failed for request.\n");
+        return;
+    }
+    strcpy(new_node->request, request);
+    new_node->next = firewall.requests_head;
+    firewall.requests_head = new_node;
+}
+
+// Function to list all requests in the linked list
+void list_requests() {
+    RequestNode *current = firewall.requests_head;
+    if (current == NULL) {
+        printf("No requests available.\n");
+        return;
+    }
+    while (current) {
+        printf("%s\n", current->request);
+        current = current->next;
+    }
+}
+
+// Helper function to parse IP address
+bool parseIPAddress(const char *IP) {
+    char *token;
+    char *temp = strdup(IP);
+
+    token = strtok(temp, ".");
+    while (token != NULL) {
+        if (strchr(token, '-') == NULL) {
             int num = atoi(token);
-            if(num<0||num>255){
+            if (num < 0 || num > 255) {
                 printf("Invalid Rule\n");
-                break;
+                free(temp);
+                return false;
             }
-        }
-        else{
-           
-           char* range_temp = strdup(token);
-           char* first_part = strtok(range_temp,"-");
-           char* second_part = strtok(NULL,"-");
+        } else {
+            char *range_temp = strdup(token);
+            char *first_part = strtok(range_temp, "-");
+            char *second_part = strtok(NULL, "-");
 
-           int first_num = atoi(first_part);
-           int second_num = atoi(second_part);
-           
-           if( first_num<second_num){
-               if(first_num>=0 && first_num <= 255 && second_num<=255){
-                printf("Rule Valid\n");
-               }
-               else{
+            int first_num = atoi(first_part);
+            int second_num = atoi(second_part);
+
+            if (first_num < 0 || first_num > second_num || second_num > 255) {
                 printf("Invalid Rule\n");
-               }
-           }
-           else{
-            printf("Invalid Rule\n");
-           }
-           
-           free(range_temp);
+                free(temp);
+                free(range_temp);
+                return false;
+            }
+            free(range_temp);
         }
         token = strtok(NULL, ".");
-     }
-     free(temp);    
+    }
+    free(temp);
+    return true;
 }
 
-bool parsePort(char* port){
-   
-   if(strchr(port,'-')!=NULL){
-      
-      char* range_temp = strdup(port);
-      char* first_part = strtok(range_temp,"-");
-      char* second_part = strtok(NULL,"-");
+// Helper function to parse port
+bool parsePort(const char *port) {
+    if (strchr(port, '-') != NULL) {
+        char *range_temp = strdup(port);
+        char *first_part = strtok(range_temp, "-");
+        char *second_part = strtok(NULL, "-");
 
-      int first_num = atoi(first_part);
-      int second_num = atoi(second_part);
+        int first_num = atoi(first_part);
+        int second_num = atoi(second_part);
 
-      if(first_num<second_num){
-        if(first_num>=0 && first_num<= 65535 && second_num <=65535){
-            printf("Rule Valid\n");
-        }
-        else{
+        if (first_num < 0 || first_num > second_num || second_num > 65535) {
             printf("Invalid Rule\n");
+            free(range_temp);
+            return false;
         }
-      }
-      else{
-        printf("Invalid Rule");
-      }
-
-     free(range_temp);
-   }
-   else{
-    int num = atoi(port);
-    if(num>=0 && num<=65535){
-        printf("Rule Valid\n");
+        free(range_temp);
+    } else {
+        int num = atoi(port);
+        if (num < 0 || num > 65535) {
+            printf("Invalid Rule\n");
+            return false;
+        }
     }
-    else{
-        printf("Invalid Rule\n");
-     }
-   }
-
+    return true;
 }
 
-void check_rule(char rule[]){
-    // command is C <IPAddress> <Ports>
-    // validate whether the rule is valid or not and add it if needed
-    // call the parseIp address and the parse port methods to verify the rules 
-     char* token ;
-     int loop_count = 1;
-     bool valid_ip = false;
-     bool valid_port = false;
+// Function to check and validate a rule
+void check_rule(char rule[]) {
+    char *token;
+    int loop_count = 1;
+    bool valid_ip = false;
+    bool valid_port = false;
 
-     token = strtok(rule," ");
-     while(token!=NULL){
-        if(strcmp(token,"C")==0){
-            loop_count++;
+    token = strtok(rule, " ");
+    while (token != NULL) {
+        if (loop_count == 2) {
+            valid_ip = parseIPAddress(token);
+        } else if (loop_count == 3) {
+            valid_port = parsePort(token);
         }
-        else if (loop_count==2)
-        {
-            valid_ip= parseIPAddress(token);
-            loop_count++;
-        }
-        else if (loop_count == 3)
-        {
-            valid_port= parsePort(token);
-            loop_count++;
-        }
-        
-        token = strtok(NULL," ");
-     }
-     // add rule if both IP and port are valid
-     if (valid_ip && valid_port){
+        loop_count++;
+        token = strtok(NULL, " ");
+    }
+
+    if (valid_ip && valid_port) {
         add_rule(rule);
+        add_request(rule);
         printf("Connection accepted\n");
-     }
-     else{
+    } else {
         printf("Connection rejected\n");
-     }
-
+    }
 }
 
-void delete_rule(char rule[]){
-    // command is D <rule>
-    // deletes a valid rule from the Server   
-    int found =-1; // -1 means not found
-    for (int i = 0; i < firewall.count_of_rules; i++)
-    {
-       if(strcmp(firewall.list_of_rules[i],rule)==0){
-         found = i;
-         break;
-       }
-    }
-
-    if(found!=-1){
-         for (int i = found; i < firewall.count_of_rules-1; i++){
-            strcpy(firewall.list_of_rules[i],firewall.list_of_rules[i+1]);
-         }
-         firewall.count_of_rules--;
-         printf("Rule Deleted\n");
-    }
-    else{
-        printf("Rule not found\n");
-    }
-    
-
-}
-
-void runserver(){
- printf("Server has started\n");   
- while(true){
-   char line[256];
-   fgets(line,256,stdin);
-   switch (line[0])
-    {
-        case 'A':
-            add_rule(line);// adds the request in the same function itself
-            break;
-        
-        case 'D':
-            delete_rule(line); //this is a comment
-            break;
-        
-        case 'L':
-            list_rules();
-            break;
-        
-        case 'R':
-            list_requests();
-            break;
-        
-        case 'C':
-            check_rule(line);
-            break;
-        
-        default:
-            printf("Illegal request\n");
-            break;
+void runserver() {
+    printf("Server has started\n");
+    while (true) {
+        char line[256];
+        fgets(line, sizeof(line), stdin);
+        switch (line[0]) {
+            case 'A':
+                add_rule(line);
+                add_request(line);
+                break;
+            case 'D':
+                delete_rule(line);
+                break;
+            case 'L':
+                list_rules();
+                break;
+            case 'R':
+                list_requests();
+                break;
+            case 'C':
+                check_rule(line);
+                break;
+            default:
+                printf("Illegal request\n");
+                break;
         }
-  }
- 
+    }
 }
-// additional logic need to be implemented
 
-int main (int argc, char ** argv) {
-    /* to be written */
+int main(int argc, char **argv) {
     runserver();
-    //printf ("Server to be written\n");
     return 0;
-    
 }
