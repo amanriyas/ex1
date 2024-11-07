@@ -207,7 +207,7 @@ void runserver(){
             break;
         
         case 'D':
-            delete_rule(line);
+            delete_rule(line); //this is a comment
             break;
         
         case 'L':
