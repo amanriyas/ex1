@@ -223,7 +223,7 @@ void runserver(){
             break;
         
         default:
-            printf("Illegal request");
+            printf("Illegal request\n");
             break;
         }
   }
