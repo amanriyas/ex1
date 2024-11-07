@@ -5,18 +5,18 @@
 #include <pthread.h>
 
 typedef struct RuleNode {
-    char rule[100];            // Stores a rule
-    struct RuleNode *next;     // Pointer to the next rule in the list
+    char rule[100];            
+    struct RuleNode *next;     
 } RuleNode;
 
 typedef struct RequestNode {
-    char request[100];         // Stores a request
-    struct RequestNode *next;  // Pointer to the next request in the list
+    char request[100];         
+    struct RequestNode *next;  
 } RequestNode;
 
 typedef struct {
-    RuleNode *rules_head;       // Head of the linked list for rules
-    RequestNode *requests_head; // Head of the linked list for requests
+    RuleNode *rules_head;       
+    RequestNode *requests_head;
 } Firewall;
 
 Firewall firewall = {.rules_head = NULL, .requests_head = NULL};
@@ -79,9 +79,12 @@ void add_request(const char *request) {
         printf("Memory allocation failed for request.\n");
         return;
     }
-    strcpy(new_node->request, request);
+    strncpy(new_node->request, request, sizeof(new_node->request)-1); //ensures that the whole string is being copied into the linked list
+    new_node->request[sizeof(new_node->request)-1] = '\0'; 
+
     new_node->next = firewall.requests_head;
     firewall.requests_head = new_node;
+
 }
 
 // Function to list all requests in the linked list
@@ -198,15 +201,19 @@ void runserver() {
                 break;
             case 'D':
                 delete_rule(line);
+                add_request(line);
                 break;
             case 'L':
                 list_rules();
+                add_request(line);
                 break;
             case 'R':
                 list_requests();
+                add_request(line);
                 break;
             case 'C':
                 check_rule(line);
+                add_request(line);
                 break;
             default:
                 printf("Illegal request\n");
