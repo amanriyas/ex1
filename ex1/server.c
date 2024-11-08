@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 
 typedef struct RuleNode {
     char rule[100];            
@@ -223,6 +225,15 @@ void runserver() {
 }
 
 int main(int argc, char **argv) {
+    // if(argc==2 || strcmp(argv[1],"-i")==0){
+    //     runserver();
+    // } else if (argc==3)
+    // {
+    //     int port = (int) *argv[2];
+    // }else{
+    //     printf("Usage: %s -i or %s <port>\n", argv[0], argv[0]);
+    //     return 1;
+    // }
     runserver();
     return 0;
 }
