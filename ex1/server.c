@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
+#define BUFFER_SIZE 1500
+
 typedef struct RuleNode {
     char rule[100];            
     struct RuleNode *next;     
