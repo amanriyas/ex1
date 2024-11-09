@@ -5,8 +5,11 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include<signal.h>
 
 #define BUFFER_SIZE 1500
+
+# define PORT 2200
 
 typedef struct RuleNode {
     char rule[100];            
@@ -227,15 +230,86 @@ void runserver() {
 }
 
 int main(int argc, char **argv) {
-    // if(argc==2 || strcmp(argv[1],"-i")==0){
-    //     runserver();
-    // } else if (argc==3)
-    // {
-    //     int port = (int) *argv[2];
-    // }else{
-    //     printf("Usage: %s -i or %s <port>\n", argv[0], argv[0]);
-    //     return 1;
-    // }
-    runserver();
+    
+     if (argc < 2 || strcmp(argv[1], "-i") != 0) {
+        fprintf(stderr, "Usage: server -i\n");
+        return 1;
+    }
+
+    int server_fd, new_socket;
+    struct sockaddr_in address;
+    int opt = 1;
+    int addrlen = sizeof(address);
+    char buffer[1024] = {0};
+
+    // Create a TCP socket (SOCK_STREAM for stream-based connection, which is TCP)
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+        perror("Socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Set socket options to reuse the address and port immediately after the server stops and restarts
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+        perror("Socket Option failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Set up the server address (IP and PORT)
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY; // Bind to any available network interface
+    address.sin_port = htons(PORT);       // Convert port number to network byte order
+
+    // Bind the socket to the IP and PORT
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+        perror("Bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Put the server socket in listen mode to wait for incoming connections
+    if (listen(server_fd, 3) < 0) {
+        perror("Listen failed");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Server is running and waiting for connections on port %d...\n", PORT);
+
+    // Main loop to handle clients forever
+    while (1) {
+        // Accept an incoming client connection
+        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
+            perror("Accept failed");
+            exit(EXIT_FAILURE);
+        }
+
+        printf("Client connected!\n");
+
+        runserver();
+
+        // Interaction loop with the connected client
+        while (1) {
+            memset(buffer, 0, sizeof(buffer)); // Clear the buffer for new data
+            int valread = read(new_socket, buffer, 1024); // Read message from client
+
+            if (valread <= 0) { // If client disconnects, break out of interaction loop
+                printf("Client disconnected.\n");
+                break;
+            }
+
+            printf("Client: %s", buffer); // Display client's message
+
+            // Get server's response from input
+            printf("Server: ");
+            fgets(buffer, 1024, stdin); // Read server's response from console
+
+            send(new_socket, buffer, strlen(buffer), 0); // Send the response to the client
+        }
+
+        close(new_socket); // Close the client socket when done
+    }
+
+    close(server_fd); // Close the server socket (this line will never be reached because of the infinite loop)
+    
+    
+    
     return 0;
 }
