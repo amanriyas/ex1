@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 1024
 
 // Function to connect to the server
 int connect_to_server(const char *server_ip, int server_port) {
@@ -70,11 +70,15 @@ int main(int argc, char *argv[]) {
     // Connect to the server
     int client_sock = connect_to_server(server_ip, server_port);
 
-    // Build the command string from arguments
+    
     char command[BUFFER_SIZE] = {0};
-    for (int i = 3; i < argc; i++) {
+    for (int i = 3; i <= argc; i++) {
         strcat(command, argv[i]);
-        if (i < argc - 1) strcat(command, " ");
+        if (i < argc - 1) {
+          strcat(command, " ");
+        }
+        
+
     }
 
     // Send command and receive response
