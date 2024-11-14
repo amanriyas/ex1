@@ -32,22 +32,27 @@ pthread_mutex_t firewall_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Function to add a rule to the linked list
 void add_rule(const char *rule) {
+    pthread_mutex_lock(&firewall_mutex);
     RuleNode *new_node = (RuleNode *)malloc(sizeof(RuleNode));
     if (!new_node) {
         printf("Memory allocation failed for rule.\n");
+        pthread_mutex_unlock(&firewall_mutex);
         return;
     }
     strcpy(new_node->rule, rule + 2);  // Skipping the command part
     new_node->next = firewall.rules_head;
     firewall.rules_head = new_node;
+    pthread_mutex_lock(&firewall_mutex);
     printf("Rule Added\n");
 }
 
 // Function to list all rules in the linked list
 void list_rules() {
+    pthread_mutex_lock(&firewall_mutex);
     RuleNode *current = firewall.rules_head;
     if (current == NULL) {
         printf("No rules available.\n");
+        
         return;
     }
     int rule_num = 1;
@@ -55,10 +60,12 @@ void list_rules() {
         printf("Rule %d: %s\n", rule_num++, current->rule);
         current = current->next;
     }
+    pthread_mutex_unlock(&firewall_mutex);
 }
 
 // Function to delete a specific rule from the linked list
 void delete_rule(const char *rule) {
+    pthread_mutex_lock(&firewall_mutex);
     RuleNode *current = firewall.rules_head;
     RuleNode *previous = NULL;
     
@@ -69,6 +76,7 @@ void delete_rule(const char *rule) {
     
     if (current == NULL) {
         printf("Rule not found.\n");
+        pthread_mutex_unlock(&firewall_mutex);
         return;
     }
     
@@ -78,14 +86,17 @@ void delete_rule(const char *rule) {
         previous->next = current->next;
     }
     free(current);
+    pthread_mutex_unlock(&firewall_mutex);
     printf("Rule Deleted\n");
 }
 
 // Function to add a request to the linked list
 void add_request(const char *request) {
+    pthread_mutex_lock(&firewall_mutex);
     RequestNode *new_node = (RequestNode *)malloc(sizeof(RequestNode));
     if (!new_node) {
         printf("Memory allocation failed for request.\n");
+         pthread_mutex_unlock(&firewall_mutex);
         return;
     }
     strncpy(new_node->request, request, sizeof(new_node->request)-1); //ensures that the whole string is being copied into the linked list
@@ -93,24 +104,29 @@ void add_request(const char *request) {
 
     new_node->next = firewall.requests_head;
     firewall.requests_head = new_node;
+     pthread_mutex_unlock(&firewall_mutex);
 
 }
 
 // Function to list all requests in the linked list
 void list_requests() {
+    pthread_mutex_lock(&firewall_mutex);
     RequestNode *current = firewall.requests_head;
     if (current == NULL) {
         printf("No requests available.\n");
+        
         return;
     }
     while (current) {
         printf("%s\n", current->request);
         current = current->next;
     }
+    pthread_mutex_unlock(&firewall_mutex);
 }
 
 // Helper function to parse IP address
 bool parseIPAddress(const char *IP) {
+    pthread_mutex_lock(&firewall_mutex);
     char *token;
     char *temp = strdup(IP);
 
@@ -121,6 +137,7 @@ bool parseIPAddress(const char *IP) {
             if (num < 0 || num > 255) {
                 printf("Invalid Rule\n");
                 free(temp);
+                pthread_mutex_unlock(&firewall_mutex);
                 return false;
             }
         } else {
@@ -135,6 +152,7 @@ bool parseIPAddress(const char *IP) {
                 printf("Invalid Rule\n");
                 free(temp);
                 free(range_temp);
+                 pthread_mutex_unlock(&firewall_mutex);
                 return false;
             }
             free(range_temp);
@@ -142,11 +160,13 @@ bool parseIPAddress(const char *IP) {
         token = strtok(NULL, ".");
     }
     free(temp);
+    pthread_mutex_unlock(&firewall_mutex);
     return true;
 }
 
 // Helper function to parse port
 bool parsePort(const char *port) {
+    pthread_mutex_lock(&firewall_mutex);
     if (strchr(port, '-') != NULL) {
         char *range_temp = strdup(port);
         char *first_part = strtok(range_temp, "-");
@@ -158,21 +178,26 @@ bool parsePort(const char *port) {
         if (first_num < 0 || first_num > second_num || second_num > 65535) {
             printf("Invalid Rule\n");
             free(range_temp);
+            pthread_mutex_unlock(&firewall_mutex);
             return false;
         }
         free(range_temp);
+        pthread_mutex_unlock(&firewall_mutex);
     } else {
         int num = atoi(port);
         if (num < 0 || num > 65535) {
             printf("Invalid Rule\n");
+            pthread_mutex_unlock(&firewall_mutex);
             return false;
         }
     }
+    pthread_mutex_unlock(&firewall_mutex);
     return true;
 }
 
 // Function to check and validate a rule
 void check_rule(char rule[]) {
+    pthread_mutex_lock(&firewall_mutex);
     char *token;
     int loop_count = 1;
     bool valid_ip = false;
@@ -193,8 +218,10 @@ void check_rule(char rule[]) {
         add_rule(rule);
         add_request(rule);
         printf("Connection accepted\n");
+        pthread_mutex_unlock(&firewall_mutex);
     } else {
         printf("Connection rejected\n");
+        pthread_mutex_unlock(&firewall_mutex);
     }
 }
 
