@@ -6,10 +6,11 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include<signal.h>
+#include<ctype.h>
 
-#define BUFFER_SIZE 1500
+#define BUFFER_SIZE 1024
 
-# define PORT 2200
+// # define PORT 2200
 
 typedef struct RuleNode {
     char rule[100];            
@@ -248,16 +249,18 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    // Set socket options to reuse the address and port immediately after the server stops and restarts
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
-        perror("Socket Option failed");
-        exit(EXIT_FAILURE);
-    }
+    // // Set socket options to reuse the address and port immediately after the server stops and restarts
+    // if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+    //     perror("Socket Option failed");
+    //     exit(EXIT_FAILURE);
+    // }
 
     // Set up the server address (IP and PORT)
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY; // Bind to any available network interface
     address.sin_port = htons(PORT);       // Convert port number to network byte order
+     
+     // instead of PORT, use argv[] from the client
 
     // Bind the socket to the IP and PORT
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
