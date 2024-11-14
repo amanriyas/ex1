@@ -9,7 +9,7 @@
 #include<ctype.h>
 
 #define BUFFER_SIZE 1024
-
+#define MAX_CLIENTS 10
 // # define PORT 2200
 
 typedef struct RuleNode {
@@ -28,6 +28,7 @@ typedef struct {
 } Firewall;
 
 Firewall firewall = {.rules_head = NULL, .requests_head = NULL};
+pthread_mutex_t firewall_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Function to add a rule to the linked list
 void add_rule(const char *rule) {
@@ -230,89 +231,133 @@ void runserver() {
     }
 }
 
-int main(int argc, char **argv) {
+// fo rhandling client request via network mode
+void handle_client_command(int client_sock, const char *command) {
+    char response[BUFFER_SIZE] = {0};
     
-     if (argc < 2 || strcmp(argv[1], "-i") != 0) {
-        fprintf(stderr, "Usage: server -i\n");
-        return 1;
+    switch (command[0]) {
+        case 'A':
+            add_rule(command);
+            add_request(command);
+            snprintf(response, sizeof(response), "Rule added\n");
+            break;
+        case 'D':
+            delete_rule(command);
+            add_request(command);
+            snprintf(response, sizeof(response), "Rule deleted\n");
+            break;
+        case 'L':
+            list_rules();
+            add_request(command);
+            snprintf(response, sizeof(response), "Rules listed\n");
+            break;
+        case 'R':
+            list_requests();
+            add_request(command);
+            snprintf(response, sizeof(response), "Requests listed\n");
+            break;
+        case 'C':
+            add_request(command);
+            snprintf(response, sizeof(response), "Connection checked\n");
+            break;
+        default:
+            snprintf(response, sizeof(response), "Illegal request\n");
+            break;
     }
 
-    int server_fd, new_socket;
-    struct sockaddr_in address;
-    int opt = 1;
-    int addrlen = sizeof(address);
-    char buffer[1024] = {0};
+    send(client_sock, response, strlen(response), 0);
+}
 
-    // Create a TCP socket (SOCK_STREAM for stream-based connection, which is TCP)
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        perror("Socket creation failed");
+
+
+void *client_handler(void *client){
+    int client_sock = *(int*)client;
+    free(client);
+
+    char buffer[BUFFER_SIZE];
+    while(1){
+        memset(buffer, 0 , BUFFER_SIZE);
+        int bytes_recieved = recv(client_sock, buffer, sizeof(buffer),0);
+        if (bytes_recieved <= 0) {
+            printf("Client disconnected\n");
+            close(client_sock);
+            break;
+        }
+
+
+        buffer[bytes_recieved] = '\0';
+        printf("Received command: %s\n", buffer);
+        handle_client_command(client_sock, buffer);
+    }
+
+    return NULL;
+}
+
+
+void start_socket_server(int port){
+    int server_sock;
+    struct sockaddr_in server_addr;
+
+    if ((server_sock = socket(AF_INET, SOCK_STREAM,0))<0){
+        perror("Socket creation failed\n");
         exit(EXIT_FAILURE);
     }
 
-    // // Set socket options to reuse the address and port immediately after the server stops and restarts
-    // if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
-    //     perror("Socket Option failed");
-    //     exit(EXIT_FAILURE);
-    // }
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(port);
 
-    // Set up the server address (IP and PORT)
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY; // Bind to any available network interface
-    address.sin_port = htons(PORT);       // Convert port number to network byte order
-     
-     // instead of PORT, use argv[] from the client
-
-    // Bind the socket to the IP and PORT
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        perror("Bind failed");
+    if (bind(server_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Binding failed");
+        close(server_sock);
         exit(EXIT_FAILURE);
     }
 
-    // Put the server socket in listen mode to wait for incoming connections
-    if (listen(server_fd, 3) < 0) {
+    if (listen(server_sock, MAX_CLIENTS) < 0) {
         perror("Listen failed");
+        close(server_sock);
         exit(EXIT_FAILURE);
     }
 
-    printf("Server is running and waiting for connections on port %d...\n", PORT);
+    printf("Server listening on port %d\n", port);
 
-    // Main loop to handle clients forever
-    while (1) {
-        // Accept an incoming client connection
-        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
+
+    while (1)
+    {
+        struct sockaddr_in client_addr;
+        socklen_t client_addr_len = sizeof(client_addr);
+        int *client_sock = malloc(sizeof(int));
+
+        if ((*client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &client_addr_len)) < 0) {
             perror("Accept failed");
-            exit(EXIT_FAILURE);
+            free(client_sock);
+            continue;
         }
 
-        printf("Client connected!\n");
-
-        runserver();
-
-        // Interaction loop with the connected client
-        while (1) {
-            memset(buffer, 0, sizeof(buffer)); // Clear the buffer for new data
-            int valread = read(new_socket, buffer, 1024); // Read message from client
-
-            if (valread <= 0) { // If client disconnects, break out of interaction loop
-                printf("Client disconnected.\n");
-                break;
-            }
-
-            printf("Client: %s", buffer); // Display client's message
-
-            // Get server's response from input
-            printf("Server: ");
-            fgets(buffer, 1024, stdin); // Read server's response from console
-
-            send(new_socket, buffer, strlen(buffer), 0); // Send the response to the client
-        }
-
-        close(new_socket); // Close the client socket when done
+        printf("Client connected\n");
+        pthread_t thread_id;
+        pthread_create(&thread_id, NULL, client_handler, client_sock);
+        pthread_detach(thread_id);
+    
     }
 
-    close(server_fd); // Close the server socket (this line will never be reached because of the infinite loop)
+    close(server_sock);
     
-    
+}
+
+int main(int argc, char **argv) {
+    if (argc == 2 && strcmp(argv[1], "-i") == 0) {
+        runserver();
+    } else if (argc == 3) {
+        int port = atoi(argv[2]);
+        printf("Starting server in socket mode on port %d\n", port);
+        start_socket_server(port);
+    } else {
+        fprintf(stderr, "Usage: %s -i | %s <port>\n", argv[0], argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    pthread_mutex_destroy(&firewall_mutex);
     
     return 0;
 }
